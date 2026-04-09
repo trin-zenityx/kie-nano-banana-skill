@@ -1,0 +1,26 @@
+# Secrets — never commit API keys in any form
+kie.env
+.kie_api_key
+.kie/
+.env
+
+# Generation outputs from local testing
+kie-output/
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Editor state
+.vscode/
+.idea/
+*.swp
