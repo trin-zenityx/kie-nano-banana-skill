@@ -45,7 +45,7 @@ All requests require `Authorization: Bearer <KIE_API_KEY>`.
 
 `input.image_input` items must be publicly fetchable URLs — the generation service pulls them. Local files must be uploaded first (see the file-upload endpoints below).
 
-`callBackUrl` is optional. If set, KIE will POST task-completion notifications there instead of requiring you to poll. For scripts and one-shot CLI use, polling is simpler.
+`callBackUrl` is optional. If set, KIE will POST task-completion notifications there instead of requiring you to poll. The bundled `generate.py` does **not** use webhooks — it uses the subcommand split (`submit` → `wait`) backed by a local state file at `~/.kie/tasks/<taskId>.json`. Webhooks would need a publicly reachable endpoint (and therefore a hosted server or a tunnel like ngrok), which is unrealistic for a CLI tool running on an end-user's laptop. The resumable-poll pattern solves the same "don't lose work when the caller process dies" problem without that constraint.
 
 ## Create task — response
 
@@ -182,6 +182,33 @@ For small files (recommended ≤ 10 MB; base64 inflates size by ~33%). Less usef
 | 500 | Server error | one retry is fine |
 | 501 | Generation failed | usually moderation — reframe the prompt |
 | 505 | Feature disabled | the feature has been turned off on the account |
+
+## Why the script splits into `submit` + `wait`
+
+KIE's `createTask` returns in < 5 s, but `recordInfo` typically needs 30 s – several minutes to reach `state: success`. If a single process owns both halves and that process gets killed mid-poll (Claude Code's Bash tool has a 2-minute default timeout and a 10-minute hard ceiling), the task is still running on KIE's side — but there's nobody left to poll for the result or download the image before the 24 h URL expiry.
+
+The script avoids this by persisting a state file at `~/.kie/tasks/<taskId>.json` at submit time and letting `wait` / `status` / `fetch` reload it:
+
+```json
+{
+  "taskId": "task_nano-banana-pro_...",
+  "model": "nano-banana-pro",
+  "prompt": "...",
+  "output_dir": "/abs/path/to/kie-output",
+  "state": "submitted",   // or "generating", "success", "downloaded", "fail"
+  "remote_urls": [],
+  "local_files": [],
+  "created_at": "2026-04-10T12:34:56Z",
+  "updated_at": "2026-04-10T12:34:56Z"
+}
+```
+
+Operational consequences:
+
+- `wait <taskId>` is **idempotent**. Running it twice on an already-downloaded task is a no-op; running it after a killed previous `wait` resumes polling the same KIE task (no re-generation, no extra credits).
+- `wait` exit code `3` means "still generating, resumable" — NOT a failure. Retry the same command.
+- If `wait` was killed *after* KIE marked the task `success` but *before* the download completed, the remote URLs are still fetchable via `fetch <taskId>` for ~24 h. Don't re-run `submit`.
+- If you're calling the script from something other than Claude Code and want a single process to own the whole lifecycle, the legacy `generate.py "<prompt>"` form still works — it's just not safe inside an agent.
 
 ## Raw `curl` examples
 

@@ -78,56 +78,95 @@ chmod 600 ~/.kie/.env
 
 ## Usage
 
-### Text-to-image
+### The resumable `submit` → `wait` pattern (recommended)
+
+`generate.py` is split into four subcommands so long generations survive short-lived caller processes:
 
 ```bash
-python3 scripts/generate.py \
+# Step 1 — submit. Returns a taskId in < 5 seconds.
+python3 scripts/generate.py submit \
   "a serene mountain lake at sunrise, mist rising off the water, 35mm film look" \
   --model nano-banana-pro \
   --aspect-ratio 16:9 \
   --resolution 2K
 ```
 
+Parse `taskId` from the JSON on stdout, then:
+
+```bash
+# Step 2 — wait. Polls until the image is ready, then downloads it.
+python3 scripts/generate.py wait <taskId>
+```
+
+`wait` is **idempotent and resumable**. If the caller process gets killed mid-poll (Claude Code's Bash tool kills commands after 2 minutes by default), just run `wait <taskId>` again — no credits are spent, because KIE is still working on the original task.
+
+The four subcommands:
+
+| Command | Purpose |
+| --- | --- |
+| `submit <prompt> [opts]` | create the task, write `~/.kie/tasks/<id>.json`, return the taskId |
+| `wait <taskId>` | poll until success, download the image, update state. Exit 0 done, 1 hard fail, 3 still generating |
+| `status <taskId>` | one quick poll, print current state — no download |
+| `fetch <taskId>` | for tasks KIE has already finished: pull `resultUrls` and save locally |
+
 ### Image-to-image with a local reference (auto-uploaded)
 
 ```bash
-python3 scripts/generate.py \
+python3 scripts/generate.py submit \
   "transform this into a watercolor painting" \
   --model nano-banana-pro \
   --reference ./my-photo.jpg \
   --aspect-ratio 1:1
+# ... then wait <taskId>
 ```
 
 ### Mix local files and remote URLs, up to the model's reference limit
 
 ```bash
-python3 scripts/generate.py \
+python3 scripts/generate.py submit \
   "combine the character from the first image with the style of the second, cinematic lighting" \
   --model nano-banana-2 \
   --reference ./character.png \
   --reference https://example.com/style-ref.jpg \
   --aspect-ratio 16:9
+# ... then wait <taskId>
 ```
 
-The script:
-1. Uploads any local files via KIE's file-stream endpoint (returns a public URL).
-2. Submits the generation task and receives a `taskId`.
-3. Polls `recordInfo` every 5 seconds until the task finishes.
+What the script does for you:
+1. Uploads any local reference files via KIE's file-stream endpoint (returns a public URL).
+2. Submits the generation task and writes `~/.kie/tasks/<taskId>.json`.
+3. `wait` polls `recordInfo` every 5 seconds until the task finishes, honouring its own timeout (default 540 s) and a resumable exit code for longer tasks.
 4. Downloads every result image to `./kie-output/` (configurable with `--output-dir`).
-5. Prints a JSON summary to stdout with `taskId`, `remote_urls`, and `local_files`.
+5. Prints a JSON summary on stdout with `taskId`, `state`, `remote_urls`, and `local_files`.
+
+### Legacy all-in-one mode
+
+For shell users running the script directly, the old form still works:
+
+```bash
+python3 scripts/generate.py "a serene mountain lake at sunrise" \
+  --model nano-banana-pro --aspect-ratio 16:9 --resolution 2K
+```
+
+Avoid this form inside Claude Code — it has the exact Bash-timeout vulnerability the subcommand split was designed to fix.
 
 ### All CLI flags
 
 ```
-generate.py <prompt>
+generate.py submit <prompt>
   --model {nano-banana-pro, nano-banana-2}   default: nano-banana-pro
   --reference URL_OR_PATH                    repeatable (8 max for Pro, 14 for 2)
   --aspect-ratio RATIO                       e.g. 1:1, 16:9, 9:16, 4:5 — see per-model list
   --resolution {1K, 2K, 4K}                  default: 1K
   --output-format {png, jpg}                 default: PNG for Pro, JPG for 2
   --output-dir DIR                           default: ./kie-output
-  --timeout SECONDS                          polling timeout, default 600
+
+generate.py wait <taskId>
+  --timeout SECONDS                          polling timeout, default 540 (stays under Bash ceiling)
   --poll-interval SECONDS                    default 5
+
+generate.py status <taskId>                  one quick poll, exits fast
+generate.py fetch <taskId>                   download a task KIE already finished
 ```
 
 ## Model comparison
@@ -282,9 +321,31 @@ chmod 600 ~/.kie/.env
 | `501 Generation failed` | มักโดน content filter | ปรับคำใน prompt ให้เบาลงก่อนลองใหม่ |
 | `command not found: python` | macOS ไม่มี `python` แบบไม่มีเลข | ใช้ `python3` แทน (สคริปต์ของสกิลใช้ `python3` อยู่แล้ว) |
 
+### เบื้องหลัง — ทำไมต้องแบ่งเป็น submit + wait
+
+KIE เป็น async API: `createTask` คืน `taskId` ภายใน 5 วินาที แต่กว่าภาพจริงจะเสร็จอาจใช้เวลา 30 วิ – หลายนาที ปัญหาคือ **Bash tool ของ Claude Code มี default timeout 2 นาที** — ถ้าเราเจน + รอ + ดาวน์โหลดในคำสั่งเดียว พอเกิน 2 นาที Claude Code จะ kill process ทิ้ง ทั้งที่ KIE เจนเสร็จแล้ว รูปเลยหาย (v1.0 เป็นแบบนี้)
+
+v1.1 แก้โดยแยกสคริปต์เป็น subcommand:
+
+```bash
+# Step 1 — submit (เร็ว < 5 วินาที)
+python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py submit \
+  "ภาพภูเขายามเช้าตรู่ หมอกลอยเหนือทะเลสาบ" \
+  --model nano-banana-pro --aspect-ratio 16:9 --resolution 2K
+
+# Step 2 — wait (poll จนเสร็จ + ดาวน์โหลด)
+python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py wait <taskId>
+```
+
+- **state file** ถูกเก็บที่ `~/.kie/tasks/<taskId>.json` — จดจำ prompt, model, output dir, สถานะปัจจุบัน
+- ถ้า `wait` ถูก kill กลางทาง → รัน `wait <taskId>` ซ้ำได้เลย **ไม่เสียเครดิต** เพราะ task เดิมยังทำงานอยู่บน KIE
+- ถ้า KIE เจนเสร็จแล้วแต่ `wait` ถูก kill ก่อนดาวน์โหลด → ใช้ `fetch <taskId>` ดึงรูปกลับมา (ยัง valid ภายใน 24 ชม.)
+
+ตอนคุยกับ Claude ไม่ต้องคิดเรื่องนี้ Claude จะเรียก `submit` แล้ว `wait` ให้อัตโนมัติ — รู้ไว้เผื่อเวลา debug พอ
+
 ### ถ้าอยากรันสคริปต์ตรง ๆ โดยไม่ผ่าน Claude
 
-สกิลมาพร้อมกับสคริปต์ `generate.py` ที่ใช้จาก command line ได้เหมือนกัน:
+มี legacy mode (ทำทุกอย่างในคำสั่งเดียว) เหลือไว้สำหรับใช้จาก terminal:
 
 ```bash
 python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py \
@@ -294,4 +355,4 @@ python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py \
   --resolution 2K
 ```
 
-ภาพจะถูกเซฟไว้ที่ `./kie-output/` และสคริปต์จะพิมพ์ JSON สรุป (`taskId`, URL บน KIE, path ในเครื่อง) ออกมาที่หน้าจอ
+ภาพจะถูกเซฟไว้ที่ `./kie-output/` และสคริปต์จะพิมพ์ JSON สรุป (`taskId`, URL บน KIE, path ในเครื่อง) ออกมาที่หน้าจอ — ใช้ได้เฉพาะจาก terminal ปกตินะครับ ไม่ควรให้ Claude Code เรียก legacy mode เพราะจะเจอปัญหา Bash timeout แบบเดิม
