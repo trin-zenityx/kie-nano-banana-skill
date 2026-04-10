@@ -750,7 +750,8 @@ def _add_generation_flags(p: argparse.ArgumentParser) -> None:
     p.add_argument(
         "--resolution",
         choices=["1K", "2K", "4K"],
-        default=None,
+        default="4K",
+        help="output resolution (default: 4K)",
     )
     p.add_argument(
         "--output-format",

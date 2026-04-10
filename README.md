@@ -87,9 +87,10 @@ chmod 600 ~/.kie/.env
 python3 scripts/generate.py submit \
   "a serene mountain lake at sunrise, mist rising off the water, 35mm film look" \
   --model nano-banana-pro \
-  --aspect-ratio 16:9 \
-  --resolution 2K
+  --aspect-ratio 16:9
 ```
+
+The script defaults to **`--resolution 4K`**. Override to `--resolution 2K` or `1K` only when you want smaller files or are running many draft iterations.
 
 Parse `taskId` from the JSON on stdout, then:
 
@@ -145,7 +146,7 @@ For shell users running the script directly, the old form still works:
 
 ```bash
 python3 scripts/generate.py "a serene mountain lake at sunrise" \
-  --model nano-banana-pro --aspect-ratio 16:9 --resolution 2K
+  --model nano-banana-pro --aspect-ratio 16:9
 ```
 
 Avoid this form inside Claude Code — it has the exact Bash-timeout vulnerability the subcommand split was designed to fix.
@@ -157,7 +158,7 @@ generate.py submit <prompt>
   --model {nano-banana-pro, nano-banana-2}   default: nano-banana-pro
   --reference URL_OR_PATH                    repeatable (8 max for Pro, 14 for 2)
   --aspect-ratio RATIO                       e.g. 1:1, 16:9, 9:16, 4:5 — see per-model list
-  --resolution {1K, 2K, 4K}                  default: 1K
+  --resolution {1K, 2K, 4K}                  default: 4K
   --output-format {png, jpg}                 default: PNG for Pro, JPG for 2
   --output-dir DIR                           default: ./kie-output
 
@@ -269,7 +270,7 @@ chmod 600 ~/.kie/.env
 ตัวอย่างประโยคที่ใช้ได้จริง:
 
 ```
-สร้างภาพทะเลยามเย็นมีเรือใบลำเล็ก ใช้ nano banana pro แบบ 16:9 resolution 2K
+สร้างภาพทะเลยามเย็นมีเรือใบลำเล็ก ใช้ nano banana pro แบบ 16:9
 ```
 
 ```
@@ -296,7 +297,7 @@ chmod 600 ~/.kie/.env
 
 - **โมเดล** — `nano-banana-pro` (ดีฟอลต์ เหมาะกับงานรูปเดี่ยว) หรือ `nano-banana-2` (เหมาะเมื่อต้องใส่รูปอ้างอิงหลายรูป หรือมี prompt ยาว ๆ)
 - **อัตราส่วนภาพ** — Pro รองรับ `1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9, auto` / 2 รองรับ `1:1, 16:9, 9:16, 4:3, 3:4, 21:9, auto`
-- **ความละเอียด** — `1K`, `2K`, `4K`
+- **ความละเอียด** — `1K`, `2K`, `4K` (ดีฟอลต์ `4K` — ถ้าอยากได้ไฟล์เล็กกว่านี้ให้บอก Claude ว่า "ใช้ 2K" หรือ "1K")
 - **รูปอ้างอิง** — ใส่เป็น URL หรือไฟล์ในเครื่องก็ได้ สคริปต์จะอัปโหลดให้เอง (Pro สูงสุด 8 รูป / 2 สูงสุด 14 รูป)
 - **โฟลเดอร์ปลายทาง** — ดีฟอลต์คือ `./kie-output/` ภาพจะถูกดาวน์โหลดมาไว้ในเครื่องทันทีหลังเจนเสร็จ
 
@@ -331,7 +332,7 @@ v1.1 แก้โดยแยกสคริปต์เป็น subcommand:
 # Step 1 — submit (เร็ว < 5 วินาที)
 python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py submit \
   "ภาพภูเขายามเช้าตรู่ หมอกลอยเหนือทะเลสาบ" \
-  --model nano-banana-pro --aspect-ratio 16:9 --resolution 2K
+  --model nano-banana-pro --aspect-ratio 16:9
 
 # Step 2 — wait (poll จนเสร็จ + ดาวน์โหลด)
 python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py wait <taskId>
@@ -351,8 +352,7 @@ python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py wait <taskId>
 python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py \
   "ภาพภูเขายามเช้าตรู่ หมอกลอยเหนือทะเลสาบ" \
   --model nano-banana-pro \
-  --aspect-ratio 16:9 \
-  --resolution 2K
+  --aspect-ratio 16:9
 ```
 
 ภาพจะถูกเซฟไว้ที่ `./kie-output/` และสคริปต์จะพิมพ์ JSON สรุป (`taskId`, URL บน KIE, path ในเครื่อง) ออกมาที่หน้าจอ — ใช้ได้เฉพาะจาก terminal ปกตินะครับ ไม่ควรให้ Claude Code เรียก legacy mode เพราะจะเจอปัญหา Bash timeout แบบเดิม

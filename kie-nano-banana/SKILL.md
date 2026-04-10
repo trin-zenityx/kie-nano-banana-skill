@@ -38,9 +38,10 @@ KIE generation is asynchronous: `createTask` returns a taskId in a couple of sec
 python3 scripts/generate.py submit \
   "a golden retriever puppy playing in snow, cinematic lighting, 35mm film" \
   --model nano-banana-pro \
-  --aspect-ratio 16:9 \
-  --resolution 2K
+  --aspect-ratio 16:9
 ```
+
+The script defaults to **`--resolution 4K`** so the user gets the highest-quality output without having to remember the flag. Override to `2K` or `1K` only when the user explicitly asks for a smaller file, or when they're doing many draft iterations and want to save credits.
 
 Parse the `taskId` out of the JSON stdout, then:
 
@@ -71,7 +72,7 @@ For shell users running the script directly from a terminal, the old form still 
 
 ```bash
 python3 scripts/generate.py "a serene mountain lake at sunrise" \
-  --model nano-banana-pro --aspect-ratio 16:9 --resolution 2K
+  --model nano-banana-pro --aspect-ratio 16:9
 ```
 
 Do **not** use this form from inside Claude Code — it has the same Bash-timeout vulnerability the subcommand split was designed to fix. Use `submit` + `wait` instead.
@@ -120,7 +121,7 @@ generate.py submit <prompt>
   --model {nano-banana-pro, nano-banana-2}       default: nano-banana-pro
   --reference <url or path>                      repeatable; up to model's limit
   --aspect-ratio <ratio>                          see per-model list above
-  --resolution {1K, 2K, 4K}                       default: 1K (API default)
+  --resolution {1K, 2K, 4K}                       default: 4K
   --output-format {png, jpg}                      default: model-specific
   --output-dir <path>                             default: ./kie-output
 

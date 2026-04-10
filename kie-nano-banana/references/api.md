@@ -40,7 +40,7 @@ All requests require `Authorization: Bearer <KIE_API_KEY>`.
 | Reference image size (each) | ≤ 30 MB | ≤ 30 MB |
 | Reference image formats | JPEG, PNG, WebP | JPEG, PNG, WebP |
 | `input.aspect_ratio` allowed | `1:1`, `2:3`, `3:2`, `3:4`, `4:3`, `4:5`, `5:4`, `9:16`, `16:9`, `21:9`, `auto` | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `21:9`, `auto` |
-| `input.resolution` allowed | `1K`, `2K`, `4K` (default `1K`) | `1K`, `2K`, `4K` (default `1K`) |
+| `input.resolution` allowed | `1K`, `2K`, `4K` (API default `1K`; script default `4K`) | `1K`, `2K`, `4K` (API default `1K`; script default `4K`) |
 | `input.output_format` allowed | `png` (default), `jpg` | `jpg` (default), `png` |
 
 `input.image_input` items must be publicly fetchable URLs — the generation service pulls them. Local files must be uploaded first (see the file-upload endpoints below).
