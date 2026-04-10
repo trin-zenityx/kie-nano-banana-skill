@@ -179,3 +179,119 @@ MIT — see [LICENSE](LICENSE).
 
 - API by [KIE.ai](https://kie.ai) — see their [docs](https://docs.kie.ai) for model details and pricing.
 - Built with [Claude](https://claude.com) using [skill-creator](https://github.com/anthropics/skills/tree/main/skill-creator).
+
+---
+
+## คู่มือภาษาไทย
+
+สกิลนี้ทำให้ Claude (ทั้ง Claude Code, Claude Desktop และ Agent SDK) สามารถสร้างภาพด้วยโมเดล **Google Nano Banana Pro** หรือ **Nano Banana 2** ผ่าน API ของ [KIE.ai](https://kie.ai) ได้จากการพิมพ์ข้อความธรรมชาติ ไม่ต้องเขียนโค้ด ไม่ต้องอัปโหลดรูปอ้างอิงเอง ไม่ต้องมานั่ง poll สถานะงาน และไม่ต้องกลัวว่า URL ผลลัพธ์จะหมดอายุ — สคริปต์จัดการให้หมด
+
+### สิ่งที่ต้องเตรียมครั้งเดียว
+
+1. **Python 3.9 ขึ้นไป** (macOS ใหม่ ๆ มีติดมาแล้วในชื่อ `python3`)
+2. ติดตั้งไลบรารี `requests`
+   ```bash
+   pip3 install requests
+   ```
+3. **API key จาก KIE** — ขอได้ที่ <https://kie.ai/api-key>
+4. **ติดตั้งสกิล** — ดาวน์โหลดไฟล์ `.skill` จากหน้า Releases แล้ว unzip เข้าโฟลเดอร์สกิลของ Claude
+   ```bash
+   gh release download -R trin-zenityx/kie-nano-banana-skill --pattern 'kie-nano-banana.skill'
+   unzip kie-nano-banana.skill -d ~/.claude/skills/
+   ```
+
+### ตั้งค่า API key (วิธีง่ายสุดสำหรับมือใหม่บน Mac)
+
+เปิด Terminal แล้วพิมพ์ทีละบรรทัด:
+
+```bash
+mkdir -p ~/.kie
+nano ~/.kie/.env
+```
+
+ในหน้าต่าง nano ที่เปิดขึ้นมา พิมพ์บรรทัดเดียวว่า:
+
+```
+KIE_API_KEY=sk-คีย์ของคุณตรงนี้
+```
+
+กด `Ctrl + O` แล้ว `Enter` เพื่อบันทึก จากนั้น `Ctrl + X` เพื่อออก สุดท้ายรัน:
+
+```bash
+chmod 600 ~/.kie/.env
+```
+
+เพื่อให้ไฟล์อ่านได้เฉพาะตัวเอง สคริปต์จะหาคีย์จากไฟล์นี้อัตโนมัติทุกครั้งที่เรียกใช้
+
+### วิธีใช้ — พิมพ์คุยกับ Claude ได้เลย
+
+พอสกิลถูกติดตั้งแล้ว **คุณไม่ต้องเรียกสกิลด้วยคำสั่งพิเศษ** แค่เปิดห้องแชทกับ Claude (Claude Code หรือ Claude Desktop) แล้วพิมพ์สิ่งที่อยากได้เป็นภาษาไทยหรืออังกฤษตามปกติ Claude จะดูคำในข้อความของคุณและเรียกสกิลให้เอง
+
+ตัวอย่างประโยคที่ใช้ได้จริง:
+
+```
+สร้างภาพทะเลยามเย็นมีเรือใบลำเล็ก ใช้ nano banana pro แบบ 16:9 resolution 2K
+```
+
+```
+ช่วย gen รูปแมวส้มนอนบนโซฟาในบ้านสไตล์ญี่ปุ่น ใช้ nano-banana-2 แนวตั้ง 9:16
+```
+
+```
+วาดรูปร้านกาแฟในซอยเงียบ ๆ ตอนเช้า แสงนุ่ม ๆ สไตล์ฟิล์ม 35mm
+```
+
+```
+เอารูป ./photo.jpg ไปทำเป็นภาพสีน้ำให้หน่อย ใช้ nano banana pro
+```
+
+```
+สร้างภาพตัวละครจากรูปแรก ในสไตล์ของรูปที่สอง ใช้ nano-banana-2
+— reference: ./character.png
+— reference: https://example.com/style.jpg
+```
+
+คำที่ Claude จะจับแล้วเรียกสกิลให้อัตโนมัติ: **สร้างภาพ, สร้างรูป, วาดรูป, ทำรูป, gen รูป, generate an image, make a picture, nano banana, KIE** และคำใกล้เคียง
+
+### บอกรายละเอียดอะไรได้บ้าง
+
+- **โมเดล** — `nano-banana-pro` (ดีฟอลต์ เหมาะกับงานรูปเดี่ยว) หรือ `nano-banana-2` (เหมาะเมื่อต้องใส่รูปอ้างอิงหลายรูป หรือมี prompt ยาว ๆ)
+- **อัตราส่วนภาพ** — Pro รองรับ `1:1, 2:3, 3:2, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9, auto` / 2 รองรับ `1:1, 16:9, 9:16, 4:3, 3:4, 21:9, auto`
+- **ความละเอียด** — `1K`, `2K`, `4K`
+- **รูปอ้างอิง** — ใส่เป็น URL หรือไฟล์ในเครื่องก็ได้ สคริปต์จะอัปโหลดให้เอง (Pro สูงสุด 8 รูป / 2 สูงสุด 14 รูป)
+- **โฟลเดอร์ปลายทาง** — ดีฟอลต์คือ `./kie-output/` ภาพจะถูกดาวน์โหลดมาไว้ในเครื่องทันทีหลังเจนเสร็จ
+
+### เลือกโมเดลยังไงดี
+
+| ใช้ `nano-banana-pro` เมื่อ | ใช้ `nano-banana-2` เมื่อ |
+| --- | --- |
+| งานรูปเดี่ยว รูปโปสเตอร์ รูปโปรดักต์ | ต้องใส่รูปอ้างอิงหลายรูปพร้อมกัน (> 8) |
+| ต้องการอัตราส่วน portrait ละเอียด เช่น `4:5` หรือ `2:3` | ต้องการความสม่ำเสมอของตัวละคร (character consistency) |
+| Prompt สั้นถึงปานกลาง (ไม่เกิน 10,000 ตัวอักษร) | Prompt ยาวมาก ๆ (ไม่เกิน 20,000 ตัวอักษร) |
+
+ถ้าไม่ระบุ Claude จะใช้ `nano-banana-pro` เป็นค่าดีฟอลต์
+
+### ปัญหาที่เจอบ่อย
+
+| ข้อความ error | สาเหตุ | วิธีแก้ |
+| --- | --- | --- |
+| `401 Unauthorized` | คีย์ผิดหรือไม่เจอคีย์ | ตรวจไฟล์ `~/.kie/.env` ว่ามี `KIE_API_KEY=...` |
+| `402 Insufficient credits` | เครดิตหมด | เติมเครดิตที่ <https://kie.ai> |
+| `422 Validation error` | พารามิเตอร์ผิด (มักเป็น aspect ratio ที่โมเดลนั้นไม่รองรับ หรือ URL รูปอ้างอิงเปิดไม่ได้) | ลองเปลี่ยน ratio ให้ตรงกับรายการที่โมเดลรองรับ |
+| `429 Rate limited` | ยิงเร็วไป | รอ 30–60 วินาทีแล้วลองใหม่ |
+| `501 Generation failed` | มักโดน content filter | ปรับคำใน prompt ให้เบาลงก่อนลองใหม่ |
+| `command not found: python` | macOS ไม่มี `python` แบบไม่มีเลข | ใช้ `python3` แทน (สคริปต์ของสกิลใช้ `python3` อยู่แล้ว) |
+
+### ถ้าอยากรันสคริปต์ตรง ๆ โดยไม่ผ่าน Claude
+
+สกิลมาพร้อมกับสคริปต์ `generate.py` ที่ใช้จาก command line ได้เหมือนกัน:
+
+```bash
+python3 ~/.claude/skills/kie-nano-banana/scripts/generate.py \
+  "ภาพภูเขายามเช้าตรู่ หมอกลอยเหนือทะเลสาบ" \
+  --model nano-banana-pro \
+  --aspect-ratio 16:9 \
+  --resolution 2K
+```
+
+ภาพจะถูกเซฟไว้ที่ `./kie-output/` และสคริปต์จะพิมพ์ JSON สรุป (`taskId`, URL บน KIE, path ในเครื่อง) ออกมาที่หน้าจอ
